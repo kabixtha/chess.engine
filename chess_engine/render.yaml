@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: chess-engine
+    runtime: python
+    buildCommand: "apt-get install -y stockfish && pip install -r requirements.txt && python manage.py collectstatic --noinput"
+    startCommand: "gunicorn chess_engine.wsgi:application --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: STOCKFISH_PATH
+        value: /usr/games/stockfish
+      - key: DEBUG
+        value: "False"
