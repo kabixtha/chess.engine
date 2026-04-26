@@ -1,13 +1,20 @@
 services:
   - type: web
-    name: chess-engine
+    name: kabixtha_chess-engine
     runtime: python
-    buildCommand: "apt-get install -y stockfish && pip install -r requirements.txt && python manage.py collectstatic --noinput"
-    startCommand: "gunicorn chess_engine.wsgi:application --bind 0.0.0.0:$PORT"
+    region: oregon
+    buildCommand: >
+      pip install -r requirements.txt &&
+      wget -q "https://github.com/official-stockfish/Stockfish/releases/download/sf_17/stockfish-ubuntu-x86-64-avx2.tar" &&
+      tar -xf stockfish-ubuntu-x86-64-avx2.tar &&
+      cp stockfish/stockfish-ubuntu-x86-64-avx2 /opt/render/project/src/stockfish_bin &&
+      chmod +x /opt/render/project/src/stockfish_bin &&
+      python manage.py collectstatic --noinput
+    startCommand: gunicorn chess_engine.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60
     envVars:
+      - key: STOCKFISH_PATH
+        value: /opt/render/project/src/stockfish_bin
       - key: DJANGO_SECRET_KEY
         generateValue: true
-      - key: STOCKFISH_PATH
-        value: /usr/games/stockfish
-      - key: DEBUG
-        value: "False"
+      - key: PYTHON_VERSION
+        value: 3.11.0
