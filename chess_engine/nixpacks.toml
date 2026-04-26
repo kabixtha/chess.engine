@@ -1,0 +1,16 @@
+# nixpacks.toml — tells Railway what system packages to install
+
+[phases.setup]
+# stockfish    = the chess engine binary
+# libGL + libglib2 = OpenCV runtime dependencies
+nixPkgs = [
+  "stockfish",
+  "libGL",
+  "glib",
+]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "python manage.py collectstatic --noinput && gunicorn chess_engine.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60"

@@ -1,0 +1,8 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "python manage.py collectstatic --noinput && gunicorn chess_engine.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60"
+healthcheckPath = "/"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
