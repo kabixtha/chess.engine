@@ -87,10 +87,15 @@ def analyze(request):
     except ValueError as exc:
         return _json_error(f'Generated FEN is malformed: {exc}', 422)
 
-    if not board.is_valid():
+    # Relax validation — remove pawns on back ranks (common detection artefact)
+    for sq in chess.SquareSet(chess.BB_RANK_1 | chess.BB_RANK_8):
+        p = board.piece_at(sq)
+        if p and p.piece_type == chess.PAWN:
+            board.remove_piece_at(sq)
+    # Only hard-fail if both kings are still missing after cleanup
+    if board.king(chess.WHITE) is None or board.king(chess.BLACK) is None:
         return _json_error(
-            'Detected position is not a legal chess position. '
-            'The board may be partially obscured or the wrong side was selected.',
+            'Could not find both kings. Try a cleaner screenshot with the full board visible.',
             422
         )
 

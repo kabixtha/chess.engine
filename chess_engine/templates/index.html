@@ -1,647 +1,288 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chess Engine — Best Move Analyzer</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
-  <style>
-    /* ── Design tokens ────────────────────────────────────────────────── */
-    :root, [data-theme="dark"] {
-      --bg:           #0e0e10;
-      --surface:      #17171a;
-      --surface-2:    #1e1e22;
-      --surface-3:    #252529;
-      --border:       #2e2e34;
-      --text:         #e8e8ec;
-      --text-muted:   #8a8a92;
-      --text-faint:   #50505a;
-      --accent:       #4f8ef0;
-      --accent-hover: #3a7ae0;
-      --accent-glow:  rgba(79,142,240,.18);
-      --gold:         #f0c040;
-      --success:      #4caf82;
-      --error:        #e05a5a;
-      --radius-sm:    6px;
-      --radius-md:    10px;
-      --radius-lg:    16px;
-      --shadow-sm:    0 1px 4px rgba(0,0,0,.35);
-      --shadow-md:    0 4px 20px rgba(0,0,0,.5);
-      --font-body:    'Inter', sans-serif;
-      --font-mono:    'JetBrains Mono', monospace;
-    }
-    [data-theme="light"] {
-      --bg:           #f5f5f0;
-      --surface:      #ffffff;
-      --surface-2:    #f0f0eb;
-      --surface-3:    #e8e8e2;
-      --border:       #d4d4cc;
-      --text:         #1a1a1e;
-      --text-muted:   #6a6a72;
-      --text-faint:   #a0a0a8;
-      --accent:       #2563eb;
-      --accent-hover: #1d4ed8;
-      --accent-glow:  rgba(37,99,235,.15);
-      --gold:         #b45309;
-      --success:      #15803d;
-      --error:        #dc2626;
-      --shadow-sm:    0 1px 3px rgba(0,0,0,.1);
-      --shadow-md:    0 4px 16px rgba(0,0,0,.12);
-    }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Chess Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Inter',sans-serif;background:#0e0e10;color:#e8e8ec;-webkit-font-smoothing:antialiased}
+button{cursor:pointer;font:inherit;border:none;background:none}
 
-    /* ── Reset ────────────────────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { font-size: 16px; scroll-behavior: smooth; }
-    body {
-      font-family: var(--font-body);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100dvh;
-      -webkit-font-smoothing: antialiased;
-      line-height: 1.6;
-    }
-    button { cursor: pointer; font: inherit; border: none; background: none; }
-    img { display: block; max-width: 100%; }
-    a { color: var(--accent); }
+.app{display:flex;flex-direction:column;height:100dvh;max-width:700px;margin:0 auto}
 
-    /* ── Layout ───────────────────────────────────────────────────────── */
-    .site-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: .625rem;
-      font-weight: 700;
-      font-size: 1.05rem;
-      letter-spacing: -.01em;
-      color: var(--text);
-      text-decoration: none;
-    }
-    .logo svg { flex-shrink: 0; }
+.header{display:flex;align-items:center;justify-content:space-between;padding:.875rem 1.25rem;border-bottom:1px solid #2e2e34;background:#17171a;flex-shrink:0}
+.header-title{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:1rem}
+.header-title span{font-size:1.3rem}
+.theme-btn{width:32px;height:32px;border-radius:50%;border:1px solid #2e2e34;color:#8a8a92;display:flex;align-items:center;justify-content:center;transition:background 150ms}
+.theme-btn:hover{background:#1e1e22;color:#e8e8ec}
 
-    .theme-btn {
-      width: 36px; height: 36px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 50%;
-      color: var(--text-muted);
-      border: 1px solid var(--border);
-      transition: background 150ms, color 150ms;
-    }
-    .theme-btn:hover { background: var(--surface-2); color: var(--text); }
+[data-theme="light"] body{background:#f5f5f0;color:#1a1a1e}
+[data-theme="light"] .header{background:#fff;border-color:#d4d4cc}
+[data-theme="light"] .messages{background:#f5f5f0}
+[data-theme="light"] .msg-bot{background:#fff;border-color:#d4d4cc;color:#1a1a1e}
+[data-theme="light"] .msg-user img{border-color:#d4d4cc}
+[data-theme="light"] .input-area{background:#fff;border-color:#d4d4cc}
+[data-theme="light"] .paste-zone{border-color:#d4d4cc;background:#f5f5f0}
+[data-theme="light"] .paste-zone:focus-within,[data-theme="light"] .paste-zone.active{border-color:#2563eb;background:#eff6ff}
+[data-theme="light"] .send-btn{background:#2563eb}
+[data-theme="light"] .send-btn:hover{background:#1d4ed8}
+[data-theme="light"] .side-toggle button{border-color:#d4d4cc;color:#6a6a72;background:#f0f0eb}
+[data-theme="light"] .side-toggle button.active{border-color:#2563eb;background:#eff6ff;color:#2563eb}
 
-    main {
-      max-width: 680px;
-      margin: 0 auto;
-      padding: 2.5rem 1.25rem 4rem;
-    }
+.messages{flex:1;overflow-y:auto;padding:1.25rem;display:flex;flex-direction:column;gap:1rem;background:#0e0e10}
+.messages::-webkit-scrollbar{width:4px}
+.messages::-webkit-scrollbar-track{background:transparent}
+.messages::-webkit-scrollbar-thumb{background:#2e2e34;border-radius:99px}
 
-    .page-title {
-      font-size: clamp(1.4rem, 4vw, 1.9rem);
-      font-weight: 700;
-      letter-spacing: -.025em;
-      margin-bottom: .4rem;
-    }
-    .page-subtitle { color: var(--text-muted); font-size: .95rem; margin-bottom: 2rem; }
+.msg-bot{background:#17171a;border:1px solid #2e2e34;border-radius:12px 12px 12px 4px;padding:.875rem 1rem;max-width:90%;font-size:.9rem;line-height:1.6;color:#e8e8ec}
+.msg-bot .move-big{font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;color:#f0c040;display:block;margin:.25rem 0}
+.msg-bot .eval{font-size:.85rem;color:#8a8a92;margin-top:.25rem}
+.msg-bot .eval .pos{color:#4caf82;font-weight:600}
+.msg-bot .eval .neg{color:#e05a5a;font-weight:600}
+.msg-bot .eval .mate{color:#f0c040;font-weight:700}
+.msg-bot .fen-line{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:#50505a;margin-top:.5rem;word-break:break-all;cursor:pointer;padding:.3rem .5rem;background:#1e1e22;border-radius:6px;transition:background 150ms}
+.msg-bot .fen-line:hover{background:#252529;color:#8a8a92}
+.msg-bot strong{color:#e8e8ec}
+.msg-bot .label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#50505a;display:block;margin-bottom:.15rem}
 
-    /* ── Upload card ──────────────────────────────────────────────────── */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 1.5rem;
-      box-shadow: var(--shadow-sm);
-    }
+.msg-user{align-self:flex-end;max-width:85%}
+.msg-user img{border-radius:10px;max-height:260px;width:auto;max-width:100%;border:1px solid #2e2e34;display:block}
+.msg-user .img-caption{font-size:.75rem;color:#50505a;text-align:right;margin-top:.25rem}
 
-    .drop-zone {
-      border: 2px dashed var(--border);
-      border-radius: var(--radius-md);
-      padding: 2.25rem 1.5rem;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 180ms, background 180ms;
-      position: relative;
-    }
-    .drop-zone:hover, .drop-zone.drag-over {
-      border-color: var(--accent);
-      background: var(--accent-glow);
-    }
-    .drop-zone input[type="file"] {
-      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
-    }
-    .drop-icon { font-size: 2.25rem; margin-bottom: .5rem; }
-    .drop-label { font-size: .95rem; font-weight: 500; }
-    .drop-sub   { font-size: .8rem; color: var(--text-faint); margin-top: .25rem; }
+.msg-loading{background:#17171a;border:1px solid #2e2e34;border-radius:12px 12px 12px 4px;padding:.875rem 1rem;width:fit-content}
+.dots{display:flex;gap:5px;align-items:center}
+.dots span{width:7px;height:7px;border-radius:50%;background:#4f8ef0;animation:dot 1.2s ease-in-out infinite}
+.dots span:nth-child(2){animation-delay:.2s}
+.dots span:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
 
-    /* Image preview */
-    .preview-wrap {
-      display: none;
-      position: relative;
-      margin-top: 1rem;
-      border-radius: var(--radius-md);
-      overflow: hidden;
-      border: 1px solid var(--border);
-    }
-    .preview-wrap.visible { display: block; }
-    .preview-wrap img { width: 100%; max-height: 340px; object-fit: contain; background: var(--surface-2); }
-    .preview-clear {
-      position: absolute; top: .5rem; right: .5rem;
-      background: rgba(0,0,0,.6);
-      color: #fff;
-      border-radius: 50%;
-      width: 28px; height: 28px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: .9rem;
-      backdrop-filter: blur(4px);
-      transition: background 150ms;
-    }
-    .preview-clear:hover { background: var(--error); }
+.msg-welcome{text-align:center;color:#50505a;font-size:.85rem;padding:1rem 0}
+.msg-welcome .icon{font-size:2.5rem;display:block;margin-bottom:.5rem}
 
-    /* ── Side selector ────────────────────────────────────────────────── */
-    .side-row {
-      display: flex;
-      gap: .625rem;
-      margin-top: 1.25rem;
-    }
-    .side-btn {
-      flex: 1;
-      padding: .65rem 1rem;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border);
-      background: var(--surface-2);
-      color: var(--text-muted);
-      font-size: .875rem;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: .4rem;
-      transition: all 150ms;
-    }
-    .side-btn:hover { border-color: var(--accent); color: var(--text); }
-    .side-btn.active {
-      border-color: var(--accent);
-      background: var(--accent-glow);
-      color: var(--accent);
-    }
-    .king-icon { font-size: 1.1rem; }
+.input-area{flex-shrink:0;border-top:1px solid #2e2e34;background:#17171a;padding:.875rem 1rem}
 
-    /* ── Submit ───────────────────────────────────────────────────────── */
-    .submit-btn {
-      width: 100%;
-      margin-top: 1.25rem;
-      padding: .75rem;
-      border-radius: var(--radius-md);
-      background: var(--accent);
-      color: #fff;
-      font-size: .95rem;
-      font-weight: 600;
-      letter-spacing: .01em;
-      transition: background 150ms, opacity 150ms, transform 80ms;
-    }
-    .submit-btn:hover:not(:disabled) { background: var(--accent-hover); }
-    .submit-btn:active:not(:disabled) { transform: scale(.98); }
-    .submit-btn:disabled { opacity: .5; cursor: not-allowed; }
+.side-toggle{display:flex;gap:.5rem;margin-bottom:.625rem}
+.side-toggle button{flex:1;padding:.4rem .75rem;border-radius:8px;border:1px solid #2e2e34;background:#1e1e22;color:#8a8a92;font-size:.8rem;font-weight:500;transition:all 150ms}
+.side-toggle button.active{border-color:#4f8ef0;background:rgba(79,142,240,.12);color:#4f8ef0}
 
-    /* ── Loading state ────────────────────────────────────────────────── */
-    .loading-bar {
-      display: none;
-      height: 3px;
-      background: var(--border);
-      border-radius: 99px;
-      overflow: hidden;
-      margin-top: .75rem;
-    }
-    .loading-bar.visible { display: block; }
-    .loading-bar-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent) 0%, #a78bfa 100%);
-      border-radius: 99px;
-      animation: loadbar 1.4s ease-in-out infinite;
-    }
-    @keyframes loadbar {
-      0%   { width: 0%;   margin-left: 0%; }
-      50%  { width: 60%;  margin-left: 20%; }
-      100% { width: 0%;   margin-left: 100%; }
-    }
-    .loading-text {
-      display: none;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: .875rem;
-      margin-top: .6rem;
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    .loading-text.visible { display: block; }
-    @keyframes pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
+.input-row{display:flex;gap:.5rem;align-items:flex-end}
 
-    /* ── Result panel ─────────────────────────────────────────────────── */
-    .result-panel {
-      display: none;
-      margin-top: 1.5rem;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border);
-      overflow: hidden;
-    }
-    .result-panel.visible { display: block; animation: fadeUp .3s ease; }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.paste-zone{flex:1;min-height:48px;max-height:120px;border:1.5px dashed #2e2e34;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:.625rem .875rem;cursor:pointer;transition:border-color 180ms,background 180ms;position:relative;overflow:hidden;gap:.625rem}
+.paste-zone:focus-within,.paste-zone.active{border-color:#4f8ef0;background:rgba(79,142,240,.08)}
+.paste-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.paste-zone .pz-thumb{width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;display:none}
+.paste-zone .pz-thumb.visible{display:block}
+.paste-zone .pz-text{font-size:.825rem;color:#8a8a92;pointer-events:none;white-space:nowrap}
+.paste-zone .pz-text strong{color:#e8e8ec}
+.paste-zone .pz-clear{position:absolute;top:4px;right:6px;font-size:.75rem;color:#50505a;z-index:2;cursor:pointer;padding:2px 4px;background:#1e1e22;border-radius:4px;display:none}
+.paste-zone .pz-clear.visible{display:block}
 
-    .result-header {
-      display: flex;
-      align-items: center;
-      gap: .5rem;
-      padding: .875rem 1.25rem;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      font-weight: 600;
-      font-size: .9rem;
-    }
-    .result-header .dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-    }
+.send-btn{width:48px;height:48px;border-radius:10px;background:#4f8ef0;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 150ms,opacity 150ms,transform 80ms}
+.send-btn:hover:not(:disabled){background:#3a7ae0}
+.send-btn:active:not(:disabled){transform:scale(.95)}
+.send-btn:disabled{opacity:.4;cursor:not-allowed}
 
-    .result-body {
-      background: var(--surface);
-      padding: 1.25rem;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-    @media (max-width: 480px) { .result-body { grid-template-columns: 1fr; } }
-
-    .result-item label {
-      display: block;
-      font-size: .75rem;
-      font-weight: 600;
-      letter-spacing: .07em;
-      text-transform: uppercase;
-      color: var(--text-faint);
-      margin-bottom: .3rem;
-    }
-    .result-item .value {
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-    .best-move-value {
-      font-size: 1.8rem !important;
-      color: var(--gold) !important;
-      font-family: var(--font-mono);
-    }
-    .eval-positive { color: var(--success) !important; }
-    .eval-negative { color: var(--error) !important; }
-    .eval-neutral  { color: var(--text-muted) !important; }
-
-    .fen-row {
-      grid-column: 1 / -1;
-      margin-top: .25rem;
-    }
-    .fen-row label { display: block; font-size: .75rem; font-weight: 600;
-      letter-spacing: .07em; text-transform: uppercase; color: var(--text-faint); margin-bottom: .3rem; }
-    .fen-display {
-      font-family: var(--font-mono);
-      font-size: .78rem;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: .5rem .75rem;
-      color: var(--text-muted);
-      word-break: break-all;
-      cursor: pointer;
-      transition: border-color 150ms;
-      user-select: all;
-    }
-    .fen-display:hover { border-color: var(--accent); }
-    .fen-copy-hint { font-size: .72rem; color: var(--text-faint); margin-top: .25rem; }
-
-    /* ── Error banner ─────────────────────────────────────────────────── */
-    .error-panel {
-      display: none;
-      margin-top: 1rem;
-      background: rgba(224,90,90,.1);
-      border: 1px solid rgba(224,90,90,.3);
-      border-radius: var(--radius-md);
-      padding: .875rem 1rem;
-      font-size: .875rem;
-      color: var(--error);
-    }
-    .error-panel.visible { display: flex; gap: .5rem; align-items: flex-start; }
-    .error-icon { flex-shrink: 0; margin-top: .1rem; }
-
-    /* ── Info note ────────────────────────────────────────────────────── */
-    .info-note {
-      margin-top: 1.5rem;
-      padding: .75rem 1rem;
-      background: var(--surface-2);
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border);
-      font-size: .8rem;
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
-    .info-note strong { color: var(--text); }
-  </style>
+.hint-text{font-size:.72rem;color:#50505a;text-align:center;margin-top:.4rem}
+</style>
 </head>
 <body>
+<div class="app">
 
-<!-- ── Header ──────────────────────────────────────────────────────────── -->
-<header class="site-header">
-  <a href="/" class="logo" aria-label="Chess Engine home">
-    <!-- SVG king piece logo -->
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-      <rect x="2" y="2" width="24" height="24" rx="5" fill="var(--accent)" opacity=".15"/>
-      <text x="14" y="20" text-anchor="middle" font-size="16" fill="var(--accent)">♚</text>
-    </svg>
-    Chess Engine
-  </a>
-  <button class="theme-btn" data-theme-toggle aria-label="Toggle theme">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-    </svg>
-  </button>
-</header>
-
-<!-- ── Main ────────────────────────────────────────────────────────────── -->
-<main>
-  <h1 class="page-title">Best Move Analyzer</h1>
-  <p class="page-subtitle">Upload a screenshot of any chess board — we'll detect the position and calculate the best move with Stockfish.</p>
-
-  <div class="card">
-    <!-- Drop zone -->
-    <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Upload board screenshot">
-      <input type="file" id="fileInput" accept="image/*" aria-label="Choose image file" />
-      <div class="drop-icon">♟</div>
-      <div class="drop-label">Drop your board screenshot here</div>
-      <div class="drop-sub">or click to browse &nbsp;·&nbsp; JPEG, PNG, WebP &nbsp;·&nbsp; max 10 MB</div>
+  <div class="header">
+    <div class="header-title">
+      <span>♚</span> Chess Engine
     </div>
+    <button class="theme-btn" data-theme-toggle aria-label="Toggle theme">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
 
-    <!-- Preview -->
-    <div class="preview-wrap" id="previewWrap">
-      <img id="previewImg" src="" alt="Board preview" />
-      <button class="preview-clear" id="clearBtn" aria-label="Remove image">✕</button>
+  <div class="messages" id="messages">
+    <div class="msg-welcome">
+      <span class="icon">♟</span>
+      Paste a chess board screenshot and I'll find the best move.<br/>
+      Press <strong>Ctrl+V</strong> anywhere or click the box below.
     </div>
+  </div>
 
-    <!-- Side selector -->
-    <div class="side-row" role="group" aria-label="Select your side">
-      <button class="side-btn active" data-side="white" id="btnWhite">
-        <span class="king-icon">♔</span> I'm White
-      </button>
-      <button class="side-btn" data-side="black" id="btnBlack">
-        <span class="king-icon">♚</span> I'm Black
+  <div class="input-area">
+    <div class="side-toggle">
+      <button class="active" data-side="white" id="btnWhite">♔ I'm White</button>
+      <button data-side="black" id="btnBlack">♚ I'm Black</button>
+    </div>
+    <div class="input-row">
+      <div class="paste-zone" id="pasteZone" tabindex="0" aria-label="Paste or upload board screenshot">
+        <input type="file" id="fileInput" accept="image/*"/>
+        <img class="pz-thumb" id="pzThumb" alt=""/>
+        <span class="pz-text" id="pzText"><strong>Ctrl+V</strong> to paste &nbsp;·&nbsp; or click to browse</span>
+        <span class="pz-clear" id="pzClear">✕ remove</span>
+      </div>
+      <button class="send-btn" id="sendBtn" disabled aria-label="Analyze">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
     </div>
-
-    <!-- Submit -->
-    <button class="submit-btn" id="submitBtn" disabled>Analyze Position</button>
-
-    <!-- Loading -->
-    <div class="loading-bar" id="loadingBar">
-      <div class="loading-bar-fill"></div>
-    </div>
-    <div class="loading-text" id="loadingText">Detecting board and running Stockfish…</div>
-
-    <!-- Error -->
-    <div class="error-panel" id="errorPanel" role="alert">
-      <span class="error-icon">⚠</span>
-      <span id="errorMsg"></span>
-    </div>
+    <div class="hint-text">Result shown in <strong>bold</strong> chess notation — e.g. <strong>Nf3</strong>, <strong>exd5</strong>, <strong>O-O</strong></div>
   </div>
-
-  <!-- Result -->
-  <div class="result-panel" id="resultPanel">
-    <div class="result-header">
-      <span class="dot"></span>
-      Analysis complete
-    </div>
-    <div class="result-body">
-      <div class="result-item">
-        <label>Best Move</label>
-        <div class="value best-move-value" id="resBestMove">—</div>
-      </div>
-      <div class="result-item">
-        <label>Evaluation</label>
-        <div class="value" id="resEval">—</div>
-      </div>
-      <div class="result-item">
-        <label>Playing As</label>
-        <div class="value" id="resSide">—</div>
-      </div>
-      <div class="result-item">
-        <label>UCI Move</label>
-        <div class="value" id="resUci" style="font-family:var(--font-mono);font-size:1rem;">—</div>
-      </div>
-      <div class="result-item fen-row">
-        <label>Detected FEN</label>
-        <div class="fen-display" id="resFen" title="Click to copy" tabindex="0" role="button" aria-label="Detected FEN (click to copy)">—</div>
-        <div class="fen-copy-hint" id="fenCopyHint">Click to copy</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Info note -->
-  <div class="info-note">
-    <strong>How it works:</strong>
-    OpenCV detects the board and classifies each square regardless of the board's colour scheme.
-    The position is validated with python-chess, then Stockfish calculates the best move.
-    <br />All processing happens on the server — your image is never stored.
-  </div>
-</main>
+</div>
 
 <script>
-(function () {
-  // ── Theme toggle ────────────────────────────────────────────────────────
+(function(){
   const root = document.documentElement;
-  let theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  let theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   root.setAttribute('data-theme', theme);
-
   const themeBtn = document.querySelector('[data-theme-toggle]');
-  function setThemeIcon() {
-    themeBtn.innerHTML = theme === 'dark'
-      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
-      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-  }
-  setThemeIcon();
-  themeBtn.addEventListener('click', () => {
-    theme = theme === 'dark' ? 'light' : 'dark';
-    root.setAttribute('data-theme', theme);
-    setThemeIcon();
-  });
+  function setIcon(){themeBtn.innerHTML = theme==='dark'
+    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';}
+  setIcon();
+  themeBtn.addEventListener('click',()=>{theme=theme==='dark'?'light':'dark';root.setAttribute('data-theme',theme);setIcon();});
 
-  // ── State ────────────────────────────────────────────────────────────────
-  let selectedFile = null;
-  let selectedSide = 'white';
+  let file = null;
+  let side = 'white';
 
-  // ── DOM refs ─────────────────────────────────────────────────────────────
-  const dropZone    = document.getElementById('dropZone');
-  const fileInput   = document.getElementById('fileInput');
-  const previewWrap = document.getElementById('previewWrap');
-  const previewImg  = document.getElementById('previewImg');
-  const clearBtn    = document.getElementById('clearBtn');
-  const btnWhite    = document.getElementById('btnWhite');
-  const btnBlack    = document.getElementById('btnBlack');
-  const submitBtn   = document.getElementById('submitBtn');
-  const loadingBar  = document.getElementById('loadingBar');
-  const loadingText = document.getElementById('loadingText');
-  const errorPanel  = document.getElementById('errorPanel');
-  const errorMsg    = document.getElementById('errorMsg');
-  const resultPanel = document.getElementById('resultPanel');
-  const resBestMove = document.getElementById('resBestMove');
-  const resEval     = document.getElementById('resEval');
-  const resSide     = document.getElementById('resSide');
-  const resUci      = document.getElementById('resUci');
-  const resFen      = document.getElementById('resFen');
-  const fenCopyHint = document.getElementById('fenCopyHint');
+  const msgs      = document.getElementById('messages');
+  const pasteZone = document.getElementById('pasteZone');
+  const fileInput = document.getElementById('fileInput');
+  const pzThumb   = document.getElementById('pzThumb');
+  const pzText    = document.getElementById('pzText');
+  const pzClear   = document.getElementById('pzClear');
+  const sendBtn   = document.getElementById('sendBtn');
+  const btnWhite  = document.getElementById('btnWhite');
+  const btnBlack  = document.getElementById('btnBlack');
 
-  // ── File handling ─────────────────────────────────────────────────────────
-  function setFile(file) {
-    if (!file || !file.type.startsWith('image/')) {
-      showError('Please choose an image file (JPEG, PNG, or WebP).');
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      showError('Image is too large. Maximum size is 10 MB.');
-      return;
-    }
-    selectedFile = file;
-    const url = URL.createObjectURL(file);
-    previewImg.src = url;
-    previewWrap.classList.add('visible');
-    submitBtn.disabled = false;
-    hideError();
-    resultPanel.classList.remove('visible');
+  [btnWhite, btnBlack].forEach(b => b.addEventListener('click', () => {
+    side = b.dataset.side;
+    btnWhite.classList.toggle('active', side==='white');
+    btnBlack.classList.toggle('active', side==='black');
+  }));
+
+  function setFile(f){
+    if(!f || !f.type.startsWith('image/')) return;
+    if(f.size > 10*1024*1024){ addBotMsg('❌ File too large. Max 10 MB.', true); return; }
+    file = f;
+    const url = URL.createObjectURL(f);
+    pzThumb.src = url;
+    pzThumb.classList.add('visible');
+    pzText.style.display = 'none';
+    pzClear.classList.add('visible');
+    sendBtn.disabled = false;
+    pasteZone.classList.add('active');
   }
 
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files[0]) setFile(fileInput.files[0]);
-  });
-
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('drag-over');
-  });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
-  });
-  dropZone.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') fileInput.click();
-  });
-
-  clearBtn.addEventListener('click', () => {
-    selectedFile = null;
-    previewImg.src = '';
-    previewWrap.classList.remove('visible');
-    submitBtn.disabled = true;
+  function clearFile(){
+    file = null;
+    pzThumb.src = '';
+    pzThumb.classList.remove('visible');
+    pzText.style.display = '';
+    pzClear.classList.remove('visible');
+    sendBtn.disabled = true;
+    pasteZone.classList.remove('active');
     fileInput.value = '';
-    resultPanel.classList.remove('visible');
-    hideError();
-  });
-
-  // ── Side selector ─────────────────────────────────────────────────────────
-  [btnWhite, btnBlack].forEach(btn => {
-    btn.addEventListener('click', () => {
-      selectedSide = btn.dataset.side;
-      btnWhite.classList.toggle('active', selectedSide === 'white');
-      btnBlack.classList.toggle('active', selectedSide === 'black');
-    });
-  });
-
-  // ── Submit ────────────────────────────────────────────────────────────────
-  submitBtn.addEventListener('click', analyzeBoard);
-
-  async function analyzeBoard() {
-    if (!selectedFile) return;
-
-    // Loading state on
-    submitBtn.disabled = true;
-    loadingBar.classList.add('visible');
-    loadingText.classList.add('visible');
-    resultPanel.classList.remove('visible');
-    hideError();
-
-    const fd = new FormData();
-    fd.append('image', selectedFile);
-    fd.append('side', selectedSide);
-
-    try {
-      const res  = await fetch('/analyze/', { method: 'POST', body: fd });
-      const data = await res.json();
-
-      if (!res.ok) {
-        showError(data.error || `Server error (${res.status}).`);
-        return;
-      }
-
-      // Populate result
-      resBestMove.textContent = data.best_move || '—';
-
-      const ev = data.evaluation || 'N/A';
-      resEval.textContent = ev;
-      resEval.className = 'value';
-      if (ev.startsWith('+')) resEval.classList.add('eval-positive');
-      else if (ev.startsWith('-')) resEval.classList.add('eval-negative');
-      else resEval.classList.add('eval-neutral');
-
-      resSide.textContent = data.side === 'white' ? '♔ White' : '♚ Black';
-      resUci.textContent  = data.move_uci || '—';
-      resFen.textContent  = data.fen || '—';
-
-      resultPanel.classList.add('visible');
-      resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    } catch (err) {
-      showError('Network error — could not reach the server. Please try again.');
-    } finally {
-      loadingBar.classList.remove('visible');
-      loadingText.classList.remove('visible');
-      submitBtn.disabled = false;
-    }
   }
 
-  // ── FEN copy ──────────────────────────────────────────────────────────────
-  resFen.addEventListener('click', () => {
-    const text = resFen.textContent;
-    if (text === '—') return;
-    navigator.clipboard.writeText(text).then(() => {
-      fenCopyHint.textContent = '✓ Copied!';
-      setTimeout(() => { fenCopyHint.textContent = 'Click to copy'; }, 2000);
-    });
-  });
-  resFen.addEventListener('keydown', (e) => { if (e.key === 'Enter') resFen.click(); });
+  pzClear.addEventListener('click', e=>{ e.stopPropagation(); clearFile(); });
+  fileInput.addEventListener('change', ()=>{ if(fileInput.files[0]) setFile(fileInput.files[0]); });
+  pasteZone.addEventListener('dragover', e=>{e.preventDefault();pasteZone.classList.add('active');});
+  pasteZone.addEventListener('dragleave', ()=>pasteZone.classList.remove('active'));
+  pasteZone.addEventListener('drop', e=>{e.preventDefault();if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0]);});
+  pasteZone.addEventListener('keydown', e=>{if(e.key==='Enter'||e.key===' ')fileInput.click();});
 
-  // ── Error helpers ──────────────────────────────────────────────────────────
-  function showError(msg) {
-    errorMsg.textContent = msg;
-    errorPanel.classList.add('visible');
-  }
-  function hideError() {
-    errorPanel.classList.remove('visible');
-    errorMsg.textContent = '';
-  }
-    // Ctrl+V paste support
-  document.addEventListener('paste', (e) => {
+  // Global Ctrl+V paste — works anywhere on the page
+  document.addEventListener('paste', e=>{
     const items = e.clipboardData?.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) setFile(file);
+    if(!items) return;
+    for(const item of items){
+      if(item.type.startsWith('image/')){
+        setFile(item.getAsFile());
         break;
       }
     }
   });
 
+  function addUserImg(url, name){
+    const d = document.createElement('div');
+    d.className = 'msg-user';
+    d.innerHTML = `<img src="${url}" alt="Board screenshot"/><div class="img-caption">${name} · as ${side==='white'?'♔ White':'♚ Black'}</div>`;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function addLoading(){
+    const d = document.createElement('div');
+    d.className = 'msg-loading';
+    d.innerHTML = '<div class="dots"><span></span><span></span><span></span></div>';
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+  }
+
+  function addBotMsg(html, isError=false){
+    const d = document.createElement('div');
+    d.className = 'msg-bot';
+    if(isError) d.style.borderColor = 'rgba(224,90,90,.4)';
+    d.innerHTML = html;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    const fen = d.querySelector('.fen-line');
+    if(fen) fen.addEventListener('click', ()=>{
+      navigator.clipboard.writeText(fen.dataset.fen||'').then(()=>{
+        const orig = fen.textContent;
+        fen.textContent = '✓ Copied!';
+        setTimeout(()=>{ fen.textContent = orig; }, 2000);
+      });
+    });
+  }
+
+  function formatEval(ev){
+    if(!ev||ev==='N/A') return `<span>${ev||'N/A'}</span>`;
+    if(ev.toLowerCase().includes('mate')) return `<span class="mate">${ev}</span>`;
+    if(ev.startsWith('+')) return `<span class="pos">${ev}</span>`;
+    if(ev.startsWith('-')) return `<span class="neg">${ev}</span>`;
+    return `<span>${ev}</span>`;
+  }
+
+  sendBtn.addEventListener('click', analyze);
+
+  async function analyze(){
+    if(!file) return;
+    const imgUrl = URL.createObjectURL(file);
+    addUserImg(imgUrl, file.name||'screenshot.png');
+    const loader = addLoading();
+    sendBtn.disabled = true;
+    const savedFile = file;
+    clearFile();
+
+    const fd = new FormData();
+    fd.append('image', savedFile);
+    fd.append('side', side);
+
+    try {
+      const res  = await fetch('/analyze/', {method:'POST', body:fd});
+      const data = await res.json();
+      loader.remove();
+      if(!res.ok){
+        addBotMsg(`<strong>⚠ Error:</strong> ${data.error||'Unknown error.'}`, true);
+        return;
+      }
+      addBotMsg(`
+        <span class="label">Best Move</span>
+        <strong class="move-big">${data.best_move||'—'}</strong>
+        <div class="eval">
+          Evaluation: ${formatEval(data.evaluation)}
+          &nbsp;·&nbsp; ${side==='white'?'♔ White':'♚ Black'}
+          &nbsp;·&nbsp; UCI: <code>${data.move_uci||'—'}</code>
+        </div>
+        <div class="fen-line" data-fen="${data.fen||''}" title="Click to copy FEN">${data.fen||'—'}</div>
+      `);
+    } catch(err){
+      loader.remove();
+      addBotMsg('❌ Network error — could not reach the server.', true);
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
 })();
 </script>
 </body>
