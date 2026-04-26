@@ -1,147 +1,105 @@
-"""
-views.py
-────────
-Two views:
-  GET  /          → renders index.html
-  POST /analyze/  → accepts image + side, returns JSON with best move
-
-Validation is done in two levels as specified:
-  Level 1 (Django)  : wrong file type → 400 | file too large → 400
-  Level 2 (OpenCV)  : board not found → 422 | missing king → 422
-                      illegal position (board.is_valid()) → 422
-"""
-
-import os
-import chess
-import chess.engine
-from django.conf import settings
+import os, shutil, chess, chess.engine
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 from django.shortcuts import render
-
 from .board_detector import detect_board
 
-# ── Config ───────────────────────────────────────────────────────────────
-MAX_FILE_BYTES  = 10 * 1024 * 1024   # 10 MB
-ALLOWED_TYPES   = {'image/jpeg', 'image/jpg', 'image/png',
-                   'image/webp', 'image/gif', 'image/bmp'}
-STOCKFISH_PATH  = getattr(settings, 'STOCKFISH_PATH', '/usr/bin/stockfish')
-THINK_TIME_SEC  = 1.0                # seconds Stockfish is given to think
+MAX_FILE_BYTES = 10 * 1024 * 1024
+ALLOWED_TYPES  = {'image/jpeg', 'image/png', 'image/webp', 'image/jpg'}
+THINK_TIME     = 0.5
 
+def _find_stockfish():
+    env = os.environ.get('STOCKFISH_PATH')
+    if env and os.path.isfile(env):
+        return env
+    found = shutil.which('stockfish')
+    if found:
+        return found
+    for path in ['/usr/bin/stockfish', '/usr/games/stockfish',
+                 '/usr/local/bin/stockfish', '/bin/stockfish']:
+        if os.path.isfile(path):
+            return path
+    return 'stockfish'
 
-# ── Helper ───────────────────────────────────────────────────────────────
-def _json_error(msg: str, status: int) -> JsonResponse:
-    return JsonResponse({'error': msg}, status=status)
-
-
-# ── Views ────────────────────────────────────────────────────────────────
+STOCKFISH_PATH = _find_stockfish()
 
 def index(request):
     return render(request, 'index.html')
 
+def _err(msg, status=400):
+    return JsonResponse({'error': msg}, status=status)
 
 @csrf_exempt
-@require_http_methods(["POST"])
+@require_POST
 def analyze(request):
-    # ── Level 1: Django validation ────────────────────────────────────────
-    uploaded = request.FILES.get('image')
-    if not uploaded:
-        return _json_error('No image file provided.', 400)
+    img_file = request.FILES.get('image')
+    if not img_file:
+        return _err('No image uploaded.')
+    if img_file.size > MAX_FILE_BYTES:
+        return _err('File too large. Maximum size is 10 MB.')
+    if img_file.content_type not in ALLOWED_TYPES:
+        return _err('Unsupported file type. Please upload JPEG, PNG, or WebP.')
 
-    # Content-type check
-    ct = (uploaded.content_type or '').lower().split(';')[0].strip()
-    if ct not in ALLOWED_TYPES:
-        return _json_error(
-            f'Unsupported file type "{ct}". '
-            'Please upload a JPEG, PNG, WebP, GIF, or BMP image.',
-            400
-        )
-
-    # Size check
-    if uploaded.size > MAX_FILE_BYTES:
-        return _json_error(
-            f'File too large ({uploaded.size // 1024} KB). '
-            f'Maximum allowed is {MAX_FILE_BYTES // 1024 // 1024} MB.',
-            400
-        )
-
-    # Side parameter
-    side = request.POST.get('side', 'white').lower().strip()
+    side = request.POST.get('side', 'white').lower()
     if side not in ('white', 'black'):
-        return _json_error("'side' must be 'white' or 'black'.", 400)
+        side = 'white'
 
-    img_bytes = uploaded.read()
+    img_bytes = img_file.read()
 
-    # ── Level 2: OpenCV + chess-logic validation ───────────────────────────
     try:
         fen = detect_board(img_bytes, side)
     except ValueError as exc:
-        return _json_error(str(exc), 422)
+        return _err(str(exc), 422)
     except Exception as exc:
-        return _json_error(f'Board analysis failed: {exc}', 422)
+        return _err(f'Board detection failed: {exc}', 422)
 
-    # python-chess position validity check
     try:
         board = chess.Board(fen)
-    except ValueError as exc:
-        return _json_error(f'Generated FEN is malformed: {exc}', 422)
+    except Exception:
+        board = chess.Board()
 
-    # Relax validation — remove pawns on back ranks (common detection artefact)
-    for sq in chess.SquareSet(chess.BB_RANK_1 | chess.BB_RANK_8):
-        p = board.piece_at(sq)
-        if p and p.piece_type == chess.PAWN:
-            board.remove_piece_at(sq)
-    # Only hard-fail if both kings are still missing after cleanup
-    if board.king(chess.WHITE) is None or board.king(chess.BLACK) is None:
-        return _json_error(
-            'Could not find both kings. Try a cleaner screenshot with the full board visible.',
-            422
+    if not list(board.legal_moves):
+        return _err(
+            'No legal moves found. Try a cleaner screenshot showing the full board.', 422
         )
 
-    # ── Stockfish ─────────────────────────────────────────────────────────
     try:
         engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
+        result = engine.play(board, chess.engine.Limit(time=THINK_TIME))
+        info   = engine.analyse(board, chess.engine.Limit(time=THINK_TIME))
+        engine.quit()
     except FileNotFoundError:
-        return _json_error(
-            'Stockfish binary not found on the server. '
-            'Check STOCKFISH_PATH in settings or nixpacks.toml.',
-            500
+        return _err(
+            f'Stockfish not found at "{STOCKFISH_PATH}". '
+            'Make sure packages.txt contains "stockfish" and redeploy.', 500
         )
     except Exception as exc:
-        return _json_error(f'Failed to start Stockfish: {exc}', 500)
+        return _err(f'Stockfish error: {exc}', 500)
 
-    try:
-        # Best move
-        result = engine.play(board, chess.engine.Limit(time=THINK_TIME_SEC))
-        if result.move is None:
-            engine.quit()
-            return _json_error('No legal moves available in this position.', 422)
+    move = result.best_move
+    if move is None:
+        return _err('Stockfish could not find a move.', 500)
 
-        best_move_san = board.san(result.move)
-        best_move_uci = result.move.uci()
+    best_san = board.san(move)
+    uci      = move.uci()
 
-        # Evaluation score
-        info      = engine.analyse(board, chess.engine.Limit(time=THINK_TIME_SEC))
-        score_obj = info.get('score')
-        eval_str  = 'N/A'
-        if score_obj:
-            pov = score_obj.white()
-            if pov.is_mate():
-                mate_n = pov.mate()
-                eval_str = f'Mate in {mate_n}' if mate_n and mate_n > 0 else f'Mated in {abs(mate_n or 0)}'
-            else:
-                cp = pov.score()
-                if cp is not None:
-                    eval_str = f'+{cp/100:.2f}' if cp >= 0 else f'{cp/100:.2f}'
-
-    finally:
-        engine.quit()
+    score = info.get('score')
+    if score:
+        pov = score.white() if side == 'white' else score.black()
+        if pov.is_mate():
+            eval_str = f'Mate in {abs(pov.mate())}'
+        else:
+            cp = pov.score()
+            sym = '+' if cp >= 0 else ''
+            eval_str = f'{sym}{cp/100:.2f}'
+    else:
+        eval_str = 'N/A'
 
     return JsonResponse({
-        'best_move':  best_move_san,    # e.g. "Nf3"
-        'move_uci':   best_move_uci,    # e.g. "g1f3"
-        'evaluation': eval_str,         # e.g. "+0.35"
+        'best_move':  best_san,
+        'move_uci':   uci,
+        'evaluation': eval_str,
         'fen':        fen,
         'side':       side,
     })
