@@ -629,6 +629,19 @@
     errorPanel.classList.remove('visible');
     errorMsg.textContent = '';
   }
+    // Ctrl+V paste support
+  document.addEventListener('paste', (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) setFile(file);
+        break;
+      }
+    }
+  });
+
 })();
 </script>
 </body>
