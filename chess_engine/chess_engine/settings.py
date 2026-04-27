@@ -38,8 +38,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'chess_engine.wsgi.application'
 
-# ── No DB needed ──────────────────────────────────────────────────────────
-DATABASES = {}
+# ── Database ──────────────────────────────────────────────────────────────
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
 # ── Static files (WhiteNoise) ─────────────────────────────────────────────
 STATIC_URL  = '/static/'
