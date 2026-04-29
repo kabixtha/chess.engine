@@ -213,7 +213,7 @@ def detect_board(img_bytes: bytes, side: str = 'white') -> str:
             pcolor = _piece_color(inner, dark_base, light_base, row, col)
             ptype  = _classify_piece_type(inner, pcolor)
             if side == 'black':
-                chess_rank = row
+                chess_rank = 7 - row
                 chess_file = 7 - col
             else:
                 chess_rank = 7 - row
